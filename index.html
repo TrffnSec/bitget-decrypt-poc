@@ -37,7 +37,16 @@ function out(...items) {
 }
 
 function provider() {
-  return window.bitkeep?.ethereum || window.ethereum;
+  if (window.ethereum?.providers?.length) {
+    const metamask = window.ethereum.providers.find((p) => p.isMetaMask);
+    if (metamask) return metamask;
+  }
+
+  if (window.ethereum?.isMetaMask) {
+    return window.ethereum;
+  }
+
+  throw new Error("MetaMask provider not found. Use a MetaMask-only browser profile or disable Bitget Wallet.");
 }
 
 window.accounts = async function () {
