@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<body>
+<h1>Phantom Fresh Cross-Provider Test</h1>
+
+<button onclick="detector()">0. Detector</button>
+<button onclick="passiveBefore()">1. Passive reads before connect</button>
+<button onclick="rawBefore()">2. Raw reads before connect</button>
+<button onclick="connectSolanaOnly()">3. Connect Solana only</button>
+<button onclick="passiveAfter()">4. Passive reads after Solana connect</button>
+<button onclick="rawAfter()">5. Raw reads after Solana connect</button>
+<button onclick="testEthSign()">6. Test Ethereum personal_sign</button>
+
+<pre id="out"></pre>
+
+<script>
+const out = document.getElementById("out");
+window.__rawResults = [];
+
+function log(label, data) {
+  console.log(label, data);
+  out.textContent += "\n\n==== " + label + " ====\n" + JSON.stringify(data, null, 2);
+}
+
+window.addEventListener("phantomRpcMessage", e => {
+  console.log("phantomRpcMessage:", e.detail);
+  try {
+    const msg = JSON.parse(e.detail);
+    window.__rawResults.push(msg);
+    log("phantomRpcMessage", msg);
+  } catch {
+    log("phantomRpcMessage-non-json", e.detail);
+  }
+});
+
+function raw(method, params) {
+  const id = "raw-" + method + "-" + Date.now();
+  window.dispatchEvent(new CustomEvent("dappRpcMessage", {
+    detail: JSON.stringify({ jsonrpc: "2.0", id, method, params })
+  }));
+}
+
+async function safeRequest(provider, method, params) {
+  try {
+    if (!provider?.request) return { missingProvider: true };
+    return await provider.request({ method, params });
+  } catch (e) {
+    return { error: { message: e.message, code: e.code, name: e.name } };
+  }
+}
+
+async function detector() {
+  log("DETECTOR", {
+    href: location.href,
+    ethereum: typeof window.ethereum,
+    phantom: typeof window.phantom,
+    phantomEthereum: typeof window.phantom?.ethereum,
+    solana: typeof window.solana,
+    phantomSolana: typeof window.phantom?.solana,
+    ethereumIsPhantom: window.ethereum?.isPhantom,
+    phantomEthereumIsPhantom: window.phantom?.ethereum?.isPhantom,
+    solanaIsPhantom: window.solana?.isPhantom,
+    phantomSolanaIsPhantom: window.phantom?.solana?.isPhantom
+  });
+}
+
+async function passiveBefore() {
+  log("PASSIVE BEFORE", {
+    eth_accounts_windowEthereum: await safeRequest(window.ethereum, "eth_accounts", []),
+    wallet_getPermissions_windowEthereum: await safeRequest(window.ethereum, "wallet_getPermissions", []),
+    eth_accounts_phantomEthereum: await safeRequest(window.phantom?.ethereum, "eth_accounts", []),
+    wallet_getPermissions_phantomEthereum: await safeRequest(window.phantom?.ethereum, "wallet_getPermissions", []),
+    solana_isConnected: window.solana?.isConnected,
+    solana_publicKey: window.solana?.publicKey?.toString?.()
+  });
+}
+
+async function rawBefore() {
+  window.__rawResults = [];
+  raw("wallet_getPermissions", []);
+  raw("eth_accounts", []);
+  raw("phantom_auto_confirm_status", {});
+  setTimeout(() => log("RAW BEFORE FINAL", window.__rawResults), 1500);
+}
+
+async function connectSolanaOnly() {
+  try {
+    const r = await window.solana.connect({ onlyIfTrusted: false });
+    log("SOLANA CONNECT RESULT", { publicKey: r.publicKey.toString() });
+  } catch (e) {
+    log("SOLANA CONNECT ERROR", { message: e.message, code: e.code, name: e.name });
+  }
+}
+
+async function passiveAfter() {
+  log("PASSIVE AFTER SOLANA CONNECT", {
+    eth_accounts_windowEthereum: await safeRequest(window.ethereum, "eth_accounts", []),
+    wallet_getPermissions_windowEthereum: await safeRequest(window.ethereum, "wallet_getPermissions", []),
+    eth_accounts_phantomEthereum: await safeRequest(window.phantom?.ethereum, "eth_accounts", []),
+    wallet_getPermissions_phantomEthereum: await safeRequest(window.phantom?.ethereum, "wallet_getPermissions", []),
+    solana_isConnected: window.solana?.isConnected,
+    solana_publicKey: window.solana?.publicKey?.toString?.()
+  });
+}
+
+async function rawAfter() {
+  window.__rawResults = [];
+  raw("wallet_getPermissions", []);
+  raw("eth_accounts", []);
+  raw("phantom_auto_confirm_status", {});
+  setTimeout(() => log("RAW AFTER FINAL", window.__rawResults), 1500);
+}
+
+async function testEthSign() {
+  const accounts =
+    await safeRequest(window.ethereum, "eth_accounts", []);
+
+  const evmAddress = Array.isArray(accounts) ? accounts[0] : null;
+
+  log("ETH SIGN TEST START", { evmAddress });
+
+  if (!evmAddress) {
+    log("ETH SIGN TEST ERROR", "No EVM address available");
+    return;
+  }
+
+  try {
+    const result = await window.ethereum.request({
+      method: "personal_sign",
+      params: ["0x68656c6c6f", evmAddress]
+    });
+    log("ETH SIGN RESULT", result);
+  } catch (e) {
+    log("ETH SIGN REJECTED/ERROR", {
+      message: e.message,
+      code: e.code,
+      name: e.name
+    });
+  }
+}
+</script>
+</body>
+</html>
