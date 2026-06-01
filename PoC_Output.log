@@ -1,0 +1,19 @@
+
+
+before rentedMultiplier: 1000000000000000000
+after rentedMultiplier: 1548219389586504312
+extra rent succeeded: true
+sqrtRented: 8901000000000000000
+rawUtility used by _checkMaxUtility: 890148799683540149
+realUtility using rentedMultiplier: 926175111597720806
+MAX_UTILITY_RATE: 900000000000000000
+repeat tiny rent stopped at 65 reason: VM Exception while processing transaction: reverted with reason string 'MAX_UTILITY_RATE'
+user token0 extracted during over-cap repeats: 65000000000000000
+repeat tiny rent successes: 65
+final rawUtility: 899855902644865392
+solvent after extra interest: true
+final realUtility: 932938563732442666
+  ✔ PoC: max utility check ignores accrued rentedMultiplier (26804ms)
+
+  1 passing (27s)
+
